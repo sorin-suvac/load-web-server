@@ -2,9 +2,18 @@ pipeline {
     agent any
 
     stages {
-        stage('Test') {
+        stage('Terraform apply') {
             steps {
-                echo 'test'
+                sh 'cd ${WORKSPACE}/Terraform'
+                sh 'terraform init'
+                sh 'terraform plan -input=false -out my-plan'
+                sh 'terraform apply -input=false my-plan'
+                sh 'terraform show'
+            }
+        }
+        stage('Terraform destroy') {
+            steps {
+                sh 'terraform destroy -auto-approve'
             }
         }
     }
