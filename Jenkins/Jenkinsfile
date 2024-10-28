@@ -4,16 +4,19 @@ pipeline {
     stages {
         stage('Terraform apply') {
             steps {
-                sh 'cd ${WORKSPACE}/Terraform'
-                sh 'terraform init'
-                sh 'terraform plan -input=false -out my-plan'
-                sh 'terraform apply -input=false my-plan'
-                sh 'terraform show'
+                dir('${WORKSPACE}/Terraform') {
+                    sh 'terraform init'
+                    sh 'terraform plan -input=false -out my-plan'
+                    sh 'terraform apply -input=false my-plan'
+                    sh 'terraform show'
+                }
             }
         }
         stage('Terraform destroy') {
             steps {
-                sh 'terraform destroy -auto-approve'
+                dir('${WORKSPACE}/Terraform') {
+                    sh 'terraform destroy -auto-approve'
+                }
             }
         }
     }
