@@ -12,6 +12,20 @@ pipeline {
                 }
             }
         }
+        stage('Test ssh connection') {
+            steps {
+                dir('Terraform') {
+                    script {
+                        def master_ip = sh(
+                            script: 'terraform output master_ip',
+                            returnStdout: true
+                        ).trim()
+                        env.MASTER_IP = master_ip
+                        echo "Master public IP: ${env.MASTER_IP}"
+                    }
+                }
+            }
+        }
         stage('Terraform destroy') {
             steps {
                 dir('Terraform') {
