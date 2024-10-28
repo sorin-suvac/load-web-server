@@ -5,17 +5,17 @@ pipeline {
         stage('Terraform apply') {
             steps {
                 dir('Terraform') {
-                    sh 'terraform init'
-                    sh 'terraform plan -input=false -out my-plan'
-                    sh 'terraform apply -input=false my-plan'
-                    sh 'terraform show'
+                    sh 'terraform init -no-color'
+                    sh 'terraform plan -input=false -out my-plan -no-color'
+                    sh 'terraform apply -input=false my-plan -no-color'
+                    sh 'terraform show -no-color'
                 }
             }
         }
         stage('Terraform destroy') {
             steps {
                 dir('Terraform') {
-                    sh 'terraform destroy -auto-approve'
+                    sh 'terraform destroy -auto-approve -no-color'
                 }
             }
         }
