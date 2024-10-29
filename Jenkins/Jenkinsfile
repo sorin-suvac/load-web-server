@@ -9,6 +9,7 @@ pipeline {
                     sh 'terraform plan -input=false -out my-plan -no-color'
                     sh 'terraform apply -input=false my-plan -no-color'
                     sh 'terraform show -no-color'
+                    sh 'chmod 400 private-key.pem'
                 }
             }
         }
@@ -16,10 +17,7 @@ pipeline {
             steps {
                 dir('Terraform') {
                     script {
-                        def master_ip = sh(
-                            script: 'terraform output master_ip',
-                            returnStdout: true
-                        ).trim()
+                        def master_ip = sh(script: 'terraform output -raw master_ip', returnStdout: true)
                         env.MASTER_IP = master_ip
                         echo "Master public IP: ${env.MASTER_IP}"
                     }
