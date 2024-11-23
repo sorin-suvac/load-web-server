@@ -11,8 +11,8 @@ terraform {
 
 provider "aws" {
   profile                  = "default"
-  region                   = "eu-central-1"
-  shared_credentials_files = ["/mnt/c/Users/ssuva/.aws/credentials"]
+  region                   = var.aws_region
+  shared_credentials_files = [var.aws_credentials]
 }
 
 resource "tls_private_key" "ssh_key" {
@@ -22,7 +22,7 @@ resource "tls_private_key" "ssh_key" {
 
 resource "local_file" "ssh_key_file" {
   content  = tls_private_key.ssh_key.private_key_pem
-  filename = "private-key.pem"
+  filename = var.ssh_key_file
 }
 
 resource "aws_key_pair" "ssh_key_pair" {
@@ -30,7 +30,7 @@ resource "aws_key_pair" "ssh_key_pair" {
 }
 
 resource "aws_vpc" "main" {
-  cidr_block = "10.0.0.0/16"
+  cidr_block = var.cidr_vpc
 
   tags = {
     Name = "main-vpc"
@@ -39,7 +39,7 @@ resource "aws_vpc" "main" {
 
 resource "aws_subnet" "public" {
   vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.1.0/24"
+  cidr_block              = var.cidr_vpc_public_subnet
   map_public_ip_on_launch = true
 
   tags = {
@@ -59,7 +59,7 @@ resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
 
   route {
-    cidr_block = "0.0.0.0/0"
+    cidr_block = var.cidr_all_networks
     gateway_id = aws_internet_gateway.internet_gateway.id
   }
 
@@ -73,25 +73,39 @@ resource "aws_route_table_association" "route_table_association" {
   subnet_id      = aws_subnet.public.id
 }
 
-resource "aws_security_group" "allow_ssh_http_https" {
+resource "aws_security_group" "main_security_group" {
   vpc_id = aws_vpc.main.id
 
   ingress {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = [var.cidr_all_networks] # Allow SSH
+  }
+
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = [var.cidr_all_networks] # Allow HTTPS
+  }
+
+  ingress {
+    from_port   = 6443
+    to_port     = 6443
+    protocol    = "tcp"
+    cidr_blocks = [var.cidr_vpc] # Allow kubeadm join
   }
 
   egress {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = [var.cidr_all_networks]
   }
 
   tags = {
-    Name = "ssh-in_all-out"
+    Name = "main_security_group"
   }
 }
 
@@ -99,7 +113,7 @@ resource "aws_instance" "master" {
   ami                         = var.ubuntu_ami
   instance_type               = var.ec2_master_instance_type
   subnet_id                   = aws_subnet.public.id
-  security_groups             = [aws_security_group.allow_ssh_http_https.id]
+  security_groups             = [aws_security_group.main_security_group.id]
   key_name                    = aws_key_pair.ssh_key_pair.key_name
   associate_public_ip_address = true
 
@@ -117,7 +131,7 @@ resource "aws_instance" "worker" {
   ami                         = var.ubuntu_ami
   instance_type               = var.ec2_worker_instance_type
   subnet_id                   = aws_subnet.public.id
-  security_groups             = [aws_security_group.allow_ssh_http_https.id]
+  security_groups             = [aws_security_group.main_security_group.id]
   key_name                    = aws_key_pair.ssh_key_pair.key_name
   associate_public_ip_address = true
 
