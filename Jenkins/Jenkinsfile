@@ -13,32 +13,36 @@ pipeline {
         stage('Terraform apply') {
             steps {
                 dir('Terraform') {
-                    sh 'terraform init -no-color'
-                    sh 'terraform plan -input=false -var="aws_credentials=${AWS_CREDENTIALS}" -var="ssh_key_file=${SSH_KEY_FILE}" -out my-plan -no-color'
-                    sh 'terraform apply -input=false my-plan -no-color'
-                    sh 'terraform show -no-color'
-                    sh 'chmod 400 private-key.pem'
-                    env.MASTER_IP = sh(script: 'terraform output -raw master_ip', returnStdout: true)
-                    def jsonIPs = sh(script: 'terraform output -json worker_ips', returnStdout: true)
-                    env.WORKERS_IPS = readJSON text: jsonIPs
+                    script {
+                        sh 'terraform init -no-color'
+                        sh 'terraform plan -input=false -var="aws_credentials=${AWS_CREDENTIALS}" -var="ssh_key_file=${SSH_KEY_FILE}" -out my-plan -no-color'
+                        sh 'terraform apply -input=false my-plan -no-color'
+                        sh 'terraform show -no-color'
+                        sh 'chmod 400 private-key.pem'
+                        env.MASTER_IP = sh(script: 'terraform output -raw master_ip', returnStdout: true)
+                        def jsonIPs = sh(script: 'terraform output -json worker_ips', returnStdout: true)
+                        env.WORKERS_IPS = readJSON text: jsonIPs
+                    }
                 }
             }
         }
         stage('Install K8S') {
             steps {
                 dir('Scripts') {
-                    def sshKey = '../Terraform/${SSH_KEY_FILE}'
-                    sh 'scp -i $sshKey install-kubeadm.sh ubuntu@${MASTER_IP}:/tmp'
-                    sh 'scp -i $sshKey init-kubeadm.sh ubuntu@${MASTER_IP}:/tmp'
-                    sh 'ssh -i $sshKey ubuntu@${MASTER_IP} chmod +x /tmp/*.sh'
-                    sh 'ssh -i $sshKey ubuntu@${MASTER_IP} /tmp/install-kubeadm.sh'
-                    sh 'ssh -i $sshKey ubuntu@${MASTER_IP} /tmp/init-kubeadm.sh'
-                    def kubeadmJoinCmd = sh(script: 'ssh -i $sshKey ubuntu@${MASTER_IP} kubeadm token create --print-join-command', returnStdout: true)
-                    ${WORKERS_IPS}.each { workerIp ->
-                        sh 'scp -i $sshKey install-kubeadm.sh ubuntu@${worker}:/tmp'
-                        sh 'ssh -i $sshKey ubuntu@${workerIp} chmod +x /tmp/install-kubeadm.sh'
-                        sh 'ssh -i $sshKey ubuntu@${workerIp} /tmp/install-kubeadm.sh'
-                        sh 'ssh -i $sshKey ubuntu@${workerIp} sudo ${kubeadmJoinCmd} --v=5'
+                    script {
+                        def sshKey = '../Terraform/${SSH_KEY_FILE}'
+                        sh 'scp -i $sshKey install-kubeadm.sh ubuntu@${MASTER_IP}:/tmp'
+                        sh 'scp -i $sshKey init-kubeadm.sh ubuntu@${MASTER_IP}:/tmp'
+                        sh 'ssh -i $sshKey ubuntu@${MASTER_IP} chmod +x /tmp/*.sh'
+                        sh 'ssh -i $sshKey ubuntu@${MASTER_IP} /tmp/install-kubeadm.sh'
+                        sh 'ssh -i $sshKey ubuntu@${MASTER_IP} /tmp/init-kubeadm.sh'
+                        def kubeadmJoinCmd = sh(script: 'ssh -i $sshKey ubuntu@${MASTER_IP} kubeadm token create --print-join-command', returnStdout: true)
+                        ${WORKERS_IPS}.each { workerIp ->
+                            sh 'scp -i $sshKey install-kubeadm.sh ubuntu@${worker}:/tmp'
+                            sh 'ssh -i $sshKey ubuntu@${workerIp} chmod +x /tmp/install-kubeadm.sh'
+                            sh 'ssh -i $sshKey ubuntu@${workerIp} /tmp/install-kubeadm.sh'
+                            sh 'ssh -i $sshKey ubuntu@${workerIp} sudo ${kubeadmJoinCmd} --v=5'
+                        }
                     }
                 }
             }
