@@ -143,3 +143,15 @@ resource "aws_instance" "worker" {
 output "worker_ips" {
   value = aws_instance.worker[*].public_ip
 }
+
+resource "null_resource" "ssh_connect" {
+  provisioner "remote-exec" {
+    connection {
+      host        = aws_instance.master.public_ip
+      user        = "ubuntu"
+      private_key = file(var.ssh_key_file)
+    }
+
+    inline = ["echo 'SSH is available!'"]
+  }
+}
