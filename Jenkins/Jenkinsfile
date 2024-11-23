@@ -48,12 +48,12 @@ pipeline {
                 }
             }
         }
-//         stage('Terraform destroy') {
-//             steps {
-//                 dir('Terraform') {
-//                     sh 'terraform destroy -auto-approve -no-color'
-//                 }
-//             }
-//         }
+        stage('Terraform destroy') {
+            steps {
+                dir('Terraform') {
+                    sh 'terraform destroy -auto-approve -no-color'
+                }
+            }
+        }
     }
 }
