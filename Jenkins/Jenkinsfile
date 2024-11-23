@@ -17,8 +17,8 @@ pipeline {
                         sh 'terraform init -no-color'
                         sh 'terraform plan -input=false -var="aws_credentials=${AWS_CREDENTIALS}" -var="ssh_key_file=${SSH_KEY_FILE}" -out my-plan -no-color'
                         sh 'terraform apply -input=false my-plan -no-color'
-                        sh 'terraform show -no-color'
-                        sh 'chmod 400 private-key.pem'
+//                         sh 'terraform show -no-color'
+                        sh 'chmod 400 ${SSH_KEY_FILE}'
                         env.MASTER_IP = sh(script: 'terraform output -raw master_ip', returnStdout: true)
                         def jsonIPs = sh(script: 'terraform output -json worker_ips', returnStdout: true)
                         env.WORKERS_IPS = readJSON text: jsonIPs
