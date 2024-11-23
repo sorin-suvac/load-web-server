@@ -21,7 +21,8 @@ pipeline {
                         sh 'chmod 400 ${SSH_KEY_FILE}'
                         env.MASTER_IP = sh(script: 'terraform output -raw master_ip', returnStdout: true)
                         def jsonIPs = sh(script: 'terraform output -json worker_ips', returnStdout: true)
-                        env.WORKERS_IPS = readJSON text: jsonIPs
+                        def jsonSlurper = new groovy.json.JsonSlurper()
+                        env.WORKERS_IPS = jsonSlurper.parseText(jsonIPs)
                     }
                 }
             }
