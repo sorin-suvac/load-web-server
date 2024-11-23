@@ -20,9 +20,13 @@ pipeline {
 //                         sh 'terraform show -no-color'
                         sh 'chmod 400 ${SSH_KEY_FILE}'
                         env.MASTER_IP = sh(script: 'terraform output -raw master_ip', returnStdout: true)
+                        echo "MASTER_IP {MASTER_IP}"
+                        echo "env.MASTER_IP {env.MASTER_IP}"
                         def jsonIPs = sh(script: 'terraform output -json worker_ips', returnStdout: true)
                         def jsonSlurper = new groovy.json.JsonSlurper()
                         env.WORKERS_IPS = jsonSlurper.parseText(jsonIPs)
+                        echo "WORKERS_IPS {WORKERS_IPS}"
+                        echo "env.WORKERS_IPS {env.WORKERS_IPS}"
                     }
                 }
             }
@@ -32,17 +36,17 @@ pipeline {
                 dir('Scripts') {
                     script {
                         def sshKey = '../Terraform/${SSH_KEY_FILE}'
-                        sh 'scp -i $sshKey install-kubeadm.sh ubuntu@${MASTER_IP}:/tmp'
-                        sh 'scp -i $sshKey init-kubeadm.sh ubuntu@${MASTER_IP}:/tmp'
-                        sh 'ssh -i $sshKey ubuntu@${MASTER_IP} chmod +x /tmp/*.sh'
-                        sh 'ssh -i $sshKey ubuntu@${MASTER_IP} /tmp/install-kubeadm.sh'
-                        sh 'ssh -i $sshKey ubuntu@${MASTER_IP} /tmp/init-kubeadm.sh'
+                        sh 'scp -i ${sshKey} install-kubeadm.sh ubuntu@${MASTER_IP}:/tmp'
+                        sh 'scp -i ${sshKey} init-kubeadm.sh ubuntu@${MASTER_IP}:/tmp'
+                        sh 'ssh -i ${sshKey} ubuntu@${MASTER_IP} chmod +x /tmp/*.sh'
+                        sh 'ssh -i ${sshKey} ubuntu@${MASTER_IP} /tmp/install-kubeadm.sh'
+                        sh 'ssh -i ${sshKey} ubuntu@${MASTER_IP} /tmp/init-kubeadm.sh'
                         def kubeadmJoinCmd = sh(script: 'ssh -i $sshKey ubuntu@${MASTER_IP} kubeadm token create --print-join-command', returnStdout: true)
                         ${WORKERS_IPS}.each { workerIp ->
-                            sh 'scp -i $sshKey install-kubeadm.sh ubuntu@${worker}:/tmp'
-                            sh 'ssh -i $sshKey ubuntu@${workerIp} chmod +x /tmp/install-kubeadm.sh'
-                            sh 'ssh -i $sshKey ubuntu@${workerIp} /tmp/install-kubeadm.sh'
-                            sh 'ssh -i $sshKey ubuntu@${workerIp} sudo ${kubeadmJoinCmd} --v=5'
+                            sh 'scp -i ${sshKey} install-kubeadm.sh ubuntu@${worker}:/tmp'
+                            sh 'ssh -i ${sshKey} ubuntu@${workerIp} chmod +x /tmp/install-kubeadm.sh'
+                            sh 'ssh -i ${sshKey} ubuntu@${workerIp} /tmp/install-kubeadm.sh'
+                            sh 'ssh -i ${sshKey} ubuntu@${workerIp} sudo ${kubeadmJoinCmd} --v=5'
                         }
                     }
                 }
