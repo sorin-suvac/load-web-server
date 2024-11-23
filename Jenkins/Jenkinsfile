@@ -19,11 +19,13 @@ pipeline {
                         sh 'terraform apply -input=false my-plan -no-color'
 //                         sh 'terraform show -no-color'
                         sh 'chmod 400 ${SSH_KEY_FILE}'
-                        env.MASTER_IP = sh(script: 'terraform output -raw master_ip', returnStdout: true)
+                        def res1 = sh(script: 'terraform output -raw master_ip', returnStdout: true)
+                        env.MASTER_IP = res1
                         echo "MASTER_IP ${env.MASTER_IP}"
                         def jsonIPs = sh(script: 'terraform output -json worker_ips', returnStdout: true)
                         def jsonSlurper = new groovy.json.JsonSlurper()
-                        env.WORKERS_IPS = jsonSlurper.parseText(jsonIPs)
+                        def res2 = jsonSlurper.parseText(jsonIPs)
+                        env.WORKERS_IPS = res2
                         echo "WORKERS_IPS ${env.WORKERS_IPS}"
                     }
                 }
@@ -33,7 +35,7 @@ pipeline {
             steps {
                 dir('Scripts') {
                     script {
-                        def sshKey = '../Terraform/${SSH_KEY_FILE}'
+                        def sshKey = "../Terraform/${env.SSH_KEY_FILE}"
                         sh 'scp -i ${sshKey} install-kubeadm.sh ubuntu@${MASTER_IP}:/tmp'
                         sh 'scp -i ${sshKey} init-kubeadm.sh ubuntu@${MASTER_IP}:/tmp'
                         sh 'ssh -i ${sshKey} ubuntu@${MASTER_IP} chmod +x /tmp/*.sh'
