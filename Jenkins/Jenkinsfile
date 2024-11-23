@@ -4,7 +4,7 @@ pipeline {
         AWS_CREDENTIALS = '/mnt/c/Users/ssuva/.aws/credentials'
         SSH_KEY_FILE = 'aws-ssh-key.pem'
         MASTER_IP = ''
-        WORKERS_IPS = []
+        WORKERS_IPS = ''
     }
 
     agent any
