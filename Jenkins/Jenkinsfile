@@ -20,13 +20,11 @@ pipeline {
 //                         sh 'terraform show -no-color'
                         sh 'chmod 400 ${SSH_KEY_FILE}'
                         env.MASTER_IP = sh(script: 'terraform output -raw master_ip', returnStdout: true)
-                        sh 'echo "MASTER_IP ${MASTER_IP}"'
-                        sh 'echo "env.MASTER_IP ${env.MASTER_IP}"'
+                        sh 'echo MASTER_IP ${MASTER_IP}'
                         def jsonIPs = sh(script: 'terraform output -json worker_ips', returnStdout: true)
                         def jsonSlurper = new groovy.json.JsonSlurper()
                         env.WORKERS_IPS = jsonSlurper.parseText(jsonIPs)
-                        sh 'echo "WORKERS_IPS ${WORKERS_IPS}"'
-                        sh 'echo "env.WORKERS_IPS ${env.WORKERS_IPS}"'
+                        sh 'echo WORKERS_IPS ${WORKERS_IPS}'
                     }
                 }
             }
