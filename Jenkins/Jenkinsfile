@@ -47,15 +47,10 @@ pipeline {
                 dir('Scripts') {
                     script {
                         def sshKey = "../Terraform/${SSH_KEY_FILE}"
-                        sh "scp -i ${sshKey} install-kubeadm.sh ubuntu@${MASTER_IP}:/tmp"
-                        sh "scp -i ${sshKey} init-kubeadm.sh ubuntu@${MASTER_IP}:/tmp"
-                        sh "ssh -i ${sshKey} ubuntu@${MASTER_IP} chmod +x /tmp/*.sh"
                         sh "ssh -i ${sshKey} ubuntu@${MASTER_IP} /tmp/install-kubeadm.sh"
                         sh "ssh -i ${sshKey} ubuntu@${MASTER_IP} /tmp/init-kubeadm.sh"
                         def kubeadmJoinCmd = sh(script: "ssh -i $sshKey ubuntu@${MASTER_IP} kubeadm token create --print-join-command", returnStdout: true)
                         ${WORKERS_IPS}.each { workerIp ->
-                            sh "scp -i ${sshKey} install-kubeadm.sh ubuntu@${worker}:/tmp"
-                            sh "ssh -i ${sshKey} ubuntu@${workerIp} chmod +x /tmp/install-kubeadm.sh"
                             sh "ssh -i ${sshKey} ubuntu@${workerIp} /tmp/install-kubeadm.sh"
                             sh "ssh -i ${sshKey} ubuntu@${workerIp} sudo ${kubeadmJoinCmd} --v=5"
                         }
@@ -71,7 +66,7 @@ pipeline {
             }
             steps {
                 dir('Terraform') {
-                    sh 'terraform destroy -auto-approve -no-color'
+                    sh 'terraform destroy -var="aws_credentials=${AWS_CREDENTIALS}" -auto-approve -no-color'
                 }
             }
         }
