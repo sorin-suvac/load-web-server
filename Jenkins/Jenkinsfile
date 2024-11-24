@@ -51,7 +51,7 @@ pipeline {
                         def kubeadmJoinCmd = sh(script: "ssh ${SSH_OPTIONS} ubuntu@${MASTER_IP} \"kubeadm token create --print-join-command\"", returnStdout: true)
                         WORKERS_IPS.each { workerIp ->
                             sh "ssh ${SSH_OPTIONS} ubuntu@${workerIp} /tmp/install-kubeadm.sh"
-                            sh "ssh ${SSH_OPTIONS} ubuntu@${workerIp} sudo ${kubeadmJoinCmd} --v=5"
+                            sh "ssh ${SSH_OPTIONS} ubuntu@${workerIp} sudo ${kubeadmJoinCmd}"
                         }
                     }
                 }
