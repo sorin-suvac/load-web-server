@@ -32,7 +32,6 @@ pipeline {
                         def jsonIPs = sh(script: 'terraform output -json worker_ips', returnStdout: true)
                         def jsonSlurper = new groovy.json.JsonSlurper()
                         WORKERS_IPS = jsonSlurper.parseText(jsonIPs)
-                        sh "ls -l ${SSH_KEY_FILE}"
                     }
                 }
             }
@@ -46,12 +45,13 @@ pipeline {
             steps {
                 dir('Terraform') {
                     script {
-                        sh "until ssh -i ${SSH_KEY_FILE} ubuntu@${MASTER_IP}; do sleep 5; done"
+                        sh "pwd; date; ls -l ${SSH_KEY_FILE}"
+                        sh "until ssh -i ${SSH_KEY_FILE} ubuntu@${MASTER_IP} date; do sleep 5; done"
                         sh "ssh -i ${SSH_KEY_FILE} ubuntu@${MASTER_IP} /tmp/install-kubeadm.sh"
                         sh "ssh -i ${SSH_KEY_FILE} ubuntu@${MASTER_IP} /tmp/init-kubeadm.sh"
                         def kubeadmJoinCmd = sh(script: "ssh -i ${SSH_KEY_FILE} ubuntu@${MASTER_IP} kubeadm token create --print-join-command", returnStdout: true)
                         ${WORKERS_IPS}.each { workerIp ->
-                            sh "until ssh -i ${SSH_KEY_FILE} ubuntu@${workerIp}; do sleep 5; done"
+                            sh "until ssh -i ${SSH_KEY_FILE} ubuntu@${workerIp} date; do sleep 5; done"
                             sh "ssh -i ${SSH_KEY_FILE} ubuntu@${workerIp} /tmp/install-kubeadm.sh"
                             sh "ssh -i ${SSH_KEY_FILE} ubuntu@${workerIp} sudo ${kubeadmJoinCmd} --v=5"
                         }
