@@ -16,12 +16,12 @@ pipeline {
     }
 
     stages {
-        when {
-            expression {
-                return params.STAGE_TERRAFORM_APPLY
-            }
-        }
         stage('Terraform apply') {
+            when {
+                expression {
+                    return params.STAGE_TERRAFORM_APPLY
+                }
+            }
             steps {
                 dir('Terraform') {
                     script {
