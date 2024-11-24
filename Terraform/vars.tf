@@ -16,6 +16,12 @@ variable "ubuntu_ami" {
   default     = "ami-0e872aee57663ae2d"
 }
 
+variable "ubuntu_user" {
+  description = "EC2 AMI Ubuntu username"
+  type        = string
+  default     = "ubuntu"
+}
+
 variable "ec2_master_instance_type" {
   description = "EC2 Instance type of master nodes"
   type        = string
