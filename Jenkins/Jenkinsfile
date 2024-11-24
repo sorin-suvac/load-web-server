@@ -7,6 +7,7 @@ pipeline {
         SSH_KEY_FILE = 'aws-ssh-key.pem'
         MASTER_IP = ''
         WORKERS_IPS = ''
+        SSH_OPTIONS = '-o StrictHostKeyChecking=no -i ${SSH_KEY_FILE}'
     }
 
     parameters {
@@ -45,12 +46,12 @@ pipeline {
             steps {
                 dir('Terraform') {
                     script {
-                        sh "ssh -o StrictHostKeyChecking=no -i ${SSH_KEY_FILE} ubuntu@${MASTER_IP} /tmp/install-kubeadm.sh"
-                        sh "ssh -o StrictHostKeyChecking=no -i ${SSH_KEY_FILE} ubuntu@${MASTER_IP} /tmp/init-kubeadm.sh"
-                        def kubeadmJoinCmd = sh(script: "ssh -o StrictHostKeyChecking=no -i ${SSH_KEY_FILE} ubuntu@${MASTER_IP} \"kubeadm token create --print-join-command\", returnStdout: true)
+                        sh "ssh ${SSH_OPTIONS} ubuntu@${MASTER_IP} /tmp/install-kubeadm.sh"
+                        sh "ssh ${SSH_OPTIONS} ubuntu@${MASTER_IP} /tmp/init-kubeadm.sh"
+                        def kubeadmJoinCmd = sh(script: "ssh ${SSH_OPTIONS} ubuntu@${MASTER_IP} \"kubeadm token create --print-join-command\"", returnStdout: true)
                         ${WORKERS_IPS}.each { workerIp ->
-                            sh "ssh -o StrictHostKeyChecking=no -i ${SSH_KEY_FILE} ubuntu@${workerIp} /tmp/install-kubeadm.sh"
-                            sh "ssh -o StrictHostKeyChecking=no -i ${SSH_KEY_FILE} ubuntu@${workerIp} sudo ${kubeadmJoinCmd} --v=5"
+                            sh "ssh ${SSH_OPTIONS} ubuntu@${workerIp} /tmp/install-kubeadm.sh"
+                            sh "ssh ${SSH_OPTIONS} ubuntu@${workerIp} sudo ${kubeadmJoinCmd} --v=5"
                         }
                     }
                 }
