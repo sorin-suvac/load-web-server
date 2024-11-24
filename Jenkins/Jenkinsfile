@@ -1,5 +1,7 @@
 pipeline {
 
+    agent any
+
     environment {
         AWS_CREDENTIALS = '/mnt/c/Users/ssuva/.aws/credentials'
         SSH_KEY_FILE = 'aws-ssh-key.pem'
@@ -7,9 +9,18 @@ pipeline {
         WORKERS_IPS = ''
     }
 
-    agent any
+    parameters {
+        booleanParam(name: 'STAGE_TERRAFORM_APPLY', defaultValue: true, description: 'Enable "Terraform apply" stage')
+        booleanParam(name: 'STAGE_INSTALL_K8S', defaultValue: true, description: 'Enable "Install K8S" stage')
+        booleanParam(name: 'STAGE_TERRAFORM_DESTROY', defaultValue: true, description: 'Enable "Terraform destroy" stage')
+    }
 
     stages {
+        when {
+            expression {
+                return params.STAGE_TERRAFORM_APPLY
+            }
+        }
         stage('Terraform apply') {
             steps {
                 dir('Terraform') {
@@ -27,6 +38,11 @@ pipeline {
             }
         }
         stage('Install K8S') {
+            when {
+                expression {
+                    return params.STAGE_INSTALL_K8S
+                }
+            }
             steps {
                 dir('Scripts') {
                     script {
@@ -48,6 +64,11 @@ pipeline {
             }
         }
         stage('Terraform destroy') {
+            when {
+                expression {
+                    return params.STAGE_TERRAFORM_DESTROY
+                }
+            }
             steps {
                 dir('Terraform') {
                     sh 'terraform destroy -auto-approve -no-color'
