@@ -45,12 +45,10 @@ pipeline {
             steps {
                 dir('Terraform') {
                     script {
-                        sh "until ssh -o StrictHostKeyChecking=no -i ${SSH_KEY_FILE} ubuntu@${MASTER_IP} date; do sleep 5; done"
                         sh "ssh -o StrictHostKeyChecking=no -i ${SSH_KEY_FILE} ubuntu@${MASTER_IP} /tmp/install-kubeadm.sh"
                         sh "ssh -o StrictHostKeyChecking=no -i ${SSH_KEY_FILE} ubuntu@${MASTER_IP} /tmp/init-kubeadm.sh"
-                        def kubeadmJoinCmd = sh(script: "ssh -i ${SSH_KEY_FILE} ubuntu@${MASTER_IP} kubeadm token create --print-join-command", returnStdout: true)
+                        def kubeadmJoinCmd = sh(script: "ssh -o StrictHostKeyChecking=no -i ${SSH_KEY_FILE} ubuntu@${MASTER_IP} \"kubeadm token create --print-join-command\", returnStdout: true)
                         ${WORKERS_IPS}.each { workerIp ->
-                            sh "until ssh -i ${SSH_KEY_FILE} ubuntu@${workerIp} date; do sleep 5; done"
                             sh "ssh -o StrictHostKeyChecking=no -i ${SSH_KEY_FILE} ubuntu@${workerIp} /tmp/install-kubeadm.sh"
                             sh "ssh -o StrictHostKeyChecking=no -i ${SSH_KEY_FILE} ubuntu@${workerIp} sudo ${kubeadmJoinCmd} --v=5"
                         }
