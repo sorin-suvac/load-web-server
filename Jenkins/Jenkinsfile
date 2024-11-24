@@ -32,7 +32,7 @@ pipeline {
                         def jsonIPs = sh(script: 'terraform output -json worker_ips', returnStdout: true)
                         def jsonSlurper = new groovy.json.JsonSlurper()
                         WORKERS_IPS = jsonSlurper.parseText(jsonIPs)
-                        sh "until ssh -i ${SSH_KEY_FILE} ubuntu@${MASTER_IP}; do sleep 5; done"
+                        sh "ls -l ${SSH_KEY_FILE}"
                     }
                 }
             }
