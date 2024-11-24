@@ -5,9 +5,9 @@ pipeline {
     environment {
         AWS_CREDENTIALS = '/mnt/c/Users/ssuva/.aws/credentials'
         SSH_KEY_FILE = 'aws-ssh-key.pem'
+        SSH_OPTIONS = '-o StrictHostKeyChecking=no -i ${SSH_KEY_FILE}'
         MASTER_IP = ''
         WORKERS_IPS = ''
-        SSH_OPTIONS = '-o StrictHostKeyChecking=no -i ${SSH_KEY_FILE}'
     }
 
     parameters {
@@ -49,7 +49,7 @@ pipeline {
                         sh "ssh ${SSH_OPTIONS} ubuntu@${MASTER_IP} /tmp/install-kubeadm.sh"
                         sh "ssh ${SSH_OPTIONS} ubuntu@${MASTER_IP} /tmp/init-kubeadm.sh"
                         def kubeadmJoinCmd = sh(script: "ssh ${SSH_OPTIONS} ubuntu@${MASTER_IP} \"kubeadm token create --print-join-command\"", returnStdout: true)
-                        ${WORKERS_IPS}.each { workerIp ->
+                        WORKERS_IPS.each { workerIp ->
                             sh "ssh ${SSH_OPTIONS} ubuntu@${workerIp} /tmp/install-kubeadm.sh"
                             sh "ssh ${SSH_OPTIONS} ubuntu@${workerIp} sudo ${kubeadmJoinCmd} --v=5"
                         }
