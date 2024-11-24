@@ -1,0 +1,6 @@
+appName: helm-server
+namespace: helm-server
+
+serverdeployment:
+  name: helm-server-deployment
+  tag: latest

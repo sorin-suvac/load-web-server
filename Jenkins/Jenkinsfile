@@ -4,7 +4,12 @@ pipeline {
 
     environment {
         AWS_CREDENTIALS = '/mnt/c/Users/ssuva/.aws/credentials'
-        SSH_KEY_FILE = 'aws-ssh-key.pem'
+        DOCKER_CREDENTIALS = 'docker-credentials'
+        DOCKER_IMAGE = 'spring-webserver-image'
+        DOCKER_REPO = 'spring-webserver'
+        K8S_APP_NAMESPACE = 'spring'
+        K8S_APP_HELM_DEPLOYMENT = 'spring-webserver-deployment'
+        SSH_KEY_FILE = '${WORKSPACE}/Terraform/aws-ssh-key.pem'
         SSH_OPTIONS = '-o StrictHostKeyChecking=no -i ${SSH_KEY_FILE}'
         MASTER_IP = ''
         WORKERS_IPS = ''
@@ -13,7 +18,10 @@ pipeline {
     parameters {
         booleanParam(name: 'STAGE_TERRAFORM_APPLY', defaultValue: true, description: 'Enable "Terraform apply" stage')
         booleanParam(name: 'STAGE_INSTALL_K8S', defaultValue: true, description: 'Enable "Install K8S" stage')
-        booleanParam(name: 'STAGE_TERRAFORM_DESTROY', defaultValue: true, description: 'Enable "Terraform destroy" stage')
+        booleanParam(name: 'STAGE_BUILD_DOCKER_IMAGE', defaultValue: true, description: 'Enable "Build Docker image" stage')
+        booleanParam(name: 'STAGE_HELM_INSTALL', defaultValue: true, description: 'Enable "Helm install" stage')
+        booleanParam(name: 'STAGE_HELM_UNINSTALL', defaultValue: false, description: 'Enable "Helm uninstall" stage')
+        booleanParam(name: 'STAGE_TERRAFORM_DESTROY', defaultValue: false, description: 'Enable "Terraform destroy" stage')
     }
 
     stages {
@@ -27,7 +35,8 @@ pipeline {
                 dir('Terraform') {
                     script {
                         sh 'terraform init -upgrade -no-color'
-                        sh 'terraform plan -input=false -var="aws_credentials=${AWS_CREDENTIALS}" -var="ssh_key_file=${SSH_KEY_FILE}" -out my-plan -no-color'
+                        sh 'terraform plan -input=false -var="aws_credentials=${AWS_CREDENTIALS}" \
+                        -var="ssh_key_file=${SSH_KEY_FILE}" -out my-plan -no-color'
                         sh 'terraform apply -input=false my-plan -no-color'
                         MASTER_IP = sh(script: 'terraform output -raw master_ip', returnStdout: true)
                         def jsonIPs = sh(script: 'terraform output -json worker_ips', returnStdout: true)
@@ -44,16 +53,77 @@ pipeline {
                 }
             }
             steps {
-                dir('Terraform') {
+                script {
+                    sh 'ssh ${SSH_OPTIONS} ubuntu@${MASTER_IP} /tmp/install-kubeadm.sh'
+                    sh 'ssh ${SSH_OPTIONS} ubuntu@${MASTER_IP} /tmp/init-kubeadm.sh'
+                    def kubeadmJoinCmd = sh(script: 'ssh ${SSH_OPTIONS} ubuntu@${MASTER_IP} \
+                    "kubeadm token create --print-join-command"', returnStdout: true)
+                    WORKERS_IPS.each { workerIp ->
+                        sh 'ssh ${SSH_OPTIONS} ubuntu@${workerIp} /tmp/install-kubeadm.sh'
+                        sh 'ssh ${SSH_OPTIONS} ubuntu@${workerIp} sudo ${kubeadmJoinCmd}'
+                    }
+                }
+            }
+        }
+        stage('Build Docker image') {
+            when {
+                expression {
+                    return params.STAGE_BUILD_DOCKER_IMAGE
+                }
+            }
+            steps {
+                dir('SpringBootWebServer') {
                     script {
-                        sh "ssh ${SSH_OPTIONS} ubuntu@${MASTER_IP} /tmp/install-kubeadm.sh"
-                        sh "ssh ${SSH_OPTIONS} ubuntu@${MASTER_IP} /tmp/init-kubeadm.sh"
-                        def kubeadmJoinCmd = sh(script: "ssh ${SSH_OPTIONS} ubuntu@${MASTER_IP} \"kubeadm token create --print-join-command\"", returnStdout: true)
-                        WORKERS_IPS.each { workerIp ->
-                            sh "ssh ${SSH_OPTIONS} ubuntu@${workerIp} /tmp/install-kubeadm.sh"
-                            sh "ssh ${SSH_OPTIONS} ubuntu@${workerIp} sudo ${kubeadmJoinCmd}"
+                        withCredentials([usernamePassword(credentialsId: DOCKER_CREDENTIALS,
+                        usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                            sh 'echo ${DOCKER_PASSWORD} | docker login -u ${DOCKER_USERNAME} --password-stdin'
+                            sh 'docker build -t ${DOCKER_IMAGE} .'
+                            sh 'docker images ${DOCKER_IMAGE}'
+                            sh 'docker tag ${DOCKER_IMAGE} ${DOCKER_USERNAME}/${DOCKER_REPO}'
+                            sh 'docker push ${DOCKER_USERNAME}/${DOCKER_REPO}'
+                            sh 'docker image rm ${DOCKER_IMAGE} ${DOCKER_USERNAME}/${DOCKER_REPO}'
                         }
                     }
+                }
+            }
+        }
+        stage('Helm install') {
+            when {
+                expression {
+                    return params.STAGE_HELM_INSTALL
+                }
+            }
+            steps {
+                script {
+                    sh 'tar -cvzf chart-spring-boot.tgz ${WORKSPACE}/Helm/chart-spring-boot'
+                    sh 'scp ${SSH_OPTIONS} chart-spring-boot.tgz ubuntu@{$MASTER_IP}:/tmp'
+                    sh 'ssh ${SSH_OPTIONS} ubuntu@${MASTER_IP} "tar -xvzf /tmp/chart-spring-boot.tgz -C /tmp/"'
+                    sh 'ssh ${SSH_OPTIONS} ubuntu@${MASTER_IP} "kubectl create namespace ${K8S_APP_NAMESPACE}"'
+                    withCredentials([usernamePassword(credentialsId: DOCKER_CREDENTIALS,
+                    usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                        sh 'ssh ${SSH_OPTIONS} ubuntu@${MASTER_IP} "kubectl -n ${K8S_APP_NAMESPACE} create secret \
+                        docker-registry-secret docker-credentials --docker-server=https://index.docker.io/v1/ \
+                        --docker-username=${DOCKER_USERNAME}" \
+                        --docker-password=${DOCKER_PASSWORD} \
+                        --docker-email=${DOCKER_USERNAME}"'
+                        sh 'ssh ${SSH_OPTIONS} ubuntu@${MASTER_IP} "helm -n ${K8S_APP_NAMESPACE} install \
+                        ${K8S_APP_HELM_DEPLOYMENT} /tmp/chart-spring-boot --set serverdeployment.image=${DOCKER_USERNAME}/${DOCKER_REPO}"'
+                    }
+                    sh 'helm -n ${K8S_APP_NAMESPACE} list'
+                }
+            }
+        }
+        stage('Helm uninstall') {
+            when {
+                expression {
+                    return params.STAGE_HELM_UNINSTALL
+                }
+            }
+            steps {
+                script {
+                    sh 'ssh ${SSH_OPTIONS} ubuntu@${MASTER_IP} "helm -n ${K8S_APP_NAMESPACE} uninstall ${K8S_APP_HELM_DEPLOYMENT}"'
+                    sh 'ssh ${SSH_OPTIONS} ubuntu@${MASTER_IP} "kubectl -n ${K8S_APP_NAMESPACE} delete secrets docker-registry-secret"'
+                    sh 'ssh ${SSH_OPTIONS} ubuntu@${MASTER_IP} "kubectl delete namespace ${K8S_APP_NAMESPACE}"'
                 }
             }
         }
