@@ -47,10 +47,12 @@ pipeline {
                 dir('Scripts') {
                     script {
                         def sshKey = "../Terraform/${SSH_KEY_FILE}"
+                        sh "until ssh -i ${sshKey} ubuntu@${MASTER_IP}; do sleep 5; done"
                         sh "ssh -i ${sshKey} ubuntu@${MASTER_IP} /tmp/install-kubeadm.sh"
                         sh "ssh -i ${sshKey} ubuntu@${MASTER_IP} /tmp/init-kubeadm.sh"
                         def kubeadmJoinCmd = sh(script: "ssh -i $sshKey ubuntu@${MASTER_IP} kubeadm token create --print-join-command", returnStdout: true)
                         ${WORKERS_IPS}.each { workerIp ->
+                            sh "until ssh -i ${sshKey} ubuntu@${workerIp}; do sleep 5; done"
                             sh "ssh -i ${sshKey} ubuntu@${workerIp} /tmp/install-kubeadm.sh"
                             sh "ssh -i ${sshKey} ubuntu@${workerIp} sudo ${kubeadmJoinCmd} --v=5"
                         }
