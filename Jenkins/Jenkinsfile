@@ -35,8 +35,8 @@ pipeline {
                 dir('Terraform') {
                     script {
                         sh 'terraform init -upgrade -no-color'
-                        sh 'terraform plan -input=false -var="aws_credentials=$AWS_CREDENTIALS" \
-                        -var="ssh_key_file=$SSH_KEY_FILE" -out my-plan -no-color'
+                        sh 'terraform plan -input=false -var="aws_credentials=${AWS_CREDENTIALS}" \
+                        -var="ssh_key_file=${SSH_KEY_FILE}" -out my-plan -no-color'
                         sh 'terraform apply -input=false my-plan -no-color'
                         MASTER_IP = sh(script: 'terraform output -raw master_ip', returnStdout: true)
                         def jsonIPs = sh(script: 'terraform output -json worker_ips', returnStdout: true)
@@ -54,13 +54,13 @@ pipeline {
             }
             steps {
                 script {
-                    sh 'ssh $SSH_OPTIONS ubuntu@$MASTER_IP /tmp/install-kubeadm.sh'
-                    sh 'ssh $SSH_OPTIONS ubuntu@$MASTER_IP /tmp/init-kubeadm.sh'
-                    def kubeadmJoinCmd = sh(script: 'ssh $SSH_OPTIONS ubuntu@$MASTER_IP \
+                    sh 'ssh ${SSH_OPTIONS} ubuntu@${MASTER_IP} /tmp/install-kubeadm.sh'
+                    sh 'ssh ${SSH_OPTIONS} ubuntu@${MASTER_IP} /tmp/init-kubeadm.sh'
+                    def kubeadmJoinCmd = sh(script: 'ssh ${SSH_OPTIONS} ubuntu@${MASTER_IP} \
                     "kubeadm token create --print-join-command"', returnStdout: true)
                     WORKERS_IPS.each { workerIp ->
-                        sh 'ssh $SSH_OPTIONS ubuntu@$workerIp /tmp/install-kubeadm.sh'
-                        sh 'ssh $SSH_OPTIONS ubuntu@$workerIp sudo $kubeadmJoinCmd'
+                        sh 'ssh ${SSH_OPTIONS} ubuntu@${workerIp} /tmp/install-kubeadm.sh'
+                        sh 'ssh ${SSH_OPTIONS} ubuntu@${workerIp} sudo ${kubeadmJoinCmd}'
                     }
                 }
             }
