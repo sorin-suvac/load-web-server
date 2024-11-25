@@ -75,7 +75,9 @@ pipeline {
             steps {
                 dir('SpringBootWebServer') {
                     script {
-                    // sudo usermod -a -G docker jenkins # run on the Jenkins server
+                        // install docker, maven on the jenkins server
+                        // sudo usermod -a -G docker jenkins # run on the Jenkins server
+                        sh "mvn clean install"
                         withCredentials([usernamePassword(credentialsId: DOCKER_CREDENTIALS,
                         usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
                             sh "echo ${DOCKER_PASSWORD} | docker login -u ${DOCKER_USERNAME} --password-stdin"
