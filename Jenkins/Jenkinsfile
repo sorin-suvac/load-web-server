@@ -9,8 +9,8 @@ pipeline {
         DOCKER_REPO = 'spring-webserver'
         K8S_APP_NAMESPACE = 'spring'
         K8S_APP_HELM_DEPLOYMENT = 'spring-webserver-deployment'
-        SSH_KEY_FILE = '$WORKSPACE/Terraform/aws-ssh-key.pem'
-        SSH_OPTIONS = '-o StrictHostKeyChecking=no -i $SSH_KEY_FILE'
+        SSH_KEY_FILE = "${WORKSPACE}/Terraform/aws-ssh-key.pem"
+        SSH_OPTIONS = "-o StrictHostKeyChecking=no -i ${SSH_KEY_FILE}"
         MASTER_IP = ''
         WORKERS_IPS = ''
     }
