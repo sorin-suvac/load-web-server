@@ -54,13 +54,13 @@ pipeline {
             }
             steps {
                 script {
-                    sh 'ssh ${SSH_OPTIONS} ubuntu@${MASTER_IP} /tmp/install-kubeadm.sh'
-                    sh 'ssh ${SSH_OPTIONS} ubuntu@${MASTER_IP} /tmp/init-kubeadm.sh'
-                    def kubeadmJoinCmd = sh(script: 'ssh ${SSH_OPTIONS} ubuntu@${MASTER_IP} \
-                    "kubeadm token create --print-join-command"', returnStdout: true)
+                    sh "ssh ${SSH_OPTIONS} ubuntu@${MASTER_IP} /tmp/install-kubeadm.sh"
+                    sh "ssh ${SSH_OPTIONS} ubuntu@${MASTER_IP} /tmp/init-kubeadm.sh"
+                    def kubeadmJoinCmd = sh(script: "ssh ${SSH_OPTIONS} ubuntu@${MASTER_IP} \
+                    \"kubeadm token create --print-join-command\"", returnStdout: true)
                     WORKERS_IPS.each { workerIp ->
-                        sh 'ssh ${SSH_OPTIONS} ubuntu@${workerIp} /tmp/install-kubeadm.sh'
-                        sh 'ssh ${SSH_OPTIONS} ubuntu@${workerIp} sudo ${kubeadmJoinCmd}'
+                        sh "ssh ${SSH_OPTIONS} ubuntu@${workerIp} /tmp/install-kubeadm.sh"
+                        sh "ssh ${SSH_OPTIONS} ubuntu@${workerIp} sudo ${kubeadmJoinCmd}"
                     }
                 }
             }
