@@ -100,7 +100,7 @@ pipeline {
             steps {
                 script {
                     sh "tar -cvzf chart-spring-boot.tgz ${WORKSPACE}/Helm/chart-spring-boot"
-                    sh "scp ${SSH_OPTIONS} chart-spring-boot.tgz ubuntu@{$MASTER_IP}:/tmp"
+                    sh "scp ${SSH_OPTIONS} chart-spring-boot.tgz ubuntu@${MASTER_IP}:/tmp"
                     sh "ssh ${SSH_OPTIONS} ubuntu@${MASTER_IP} \"tar -xvzf /tmp/chart-spring-boot.tgz -C /tmp/\""
                     sh "ssh ${SSH_OPTIONS} ubuntu@${MASTER_IP} \"kubectl create namespace ${K8S_APP_NAMESPACE}\""
                     withCredentials([usernamePassword(credentialsId: DOCKER_CREDENTIALS,
