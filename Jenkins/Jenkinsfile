@@ -99,21 +99,22 @@ pipeline {
             }
             steps {
                 script {
-                    sh 'tar -cvzf chart-spring-boot.tgz ${WORKSPACE}/Helm/chart-spring-boot'
-                    sh 'scp ${SSH_OPTIONS} chart-spring-boot.tgz ubuntu@{$MASTER_IP}:/tmp'
-                    sh 'ssh ${SSH_OPTIONS} ubuntu@${MASTER_IP} "tar -xvzf /tmp/chart-spring-boot.tgz -C /tmp/"'
-                    sh 'ssh ${SSH_OPTIONS} ubuntu@${MASTER_IP} "kubectl create namespace ${K8S_APP_NAMESPACE}"'
+                    sh "tar -cvzf chart-spring-boot.tgz ${WORKSPACE}/Helm/chart-spring-boot"
+                    sh "scp ${SSH_OPTIONS} chart-spring-boot.tgz ubuntu@{$MASTER_IP}:/tmp"
+                    sh "ssh ${SSH_OPTIONS} ubuntu@${MASTER_IP} \"tar -xvzf /tmp/chart-spring-boot.tgz -C /tmp/\""
+                    sh "ssh ${SSH_OPTIONS} ubuntu@${MASTER_IP} \"kubectl create namespace ${K8S_APP_NAMESPACE}\""
                     withCredentials([usernamePassword(credentialsId: DOCKER_CREDENTIALS,
                     usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
-                        sh 'ssh ${SSH_OPTIONS} ubuntu@${MASTER_IP} "kubectl -n ${K8S_APP_NAMESPACE} create secret \
+                        sh "ssh ${SSH_OPTIONS} ubuntu@${MASTER_IP} \"kubectl -n ${K8S_APP_NAMESPACE} create secret \
                         docker-registry-secret docker-credentials --docker-server=https://index.docker.io/v1/ \
-                        --docker-username=${DOCKER_USERNAME}" \
+                        --docker-username=${DOCKER_USERNAME} \
                         --docker-password=${DOCKER_PASSWORD} \
-                        --docker-email=${DOCKER_USERNAME}"'
-                        sh 'ssh ${SSH_OPTIONS} ubuntu@${MASTER_IP} "helm -n ${K8S_APP_NAMESPACE} install \
-                        ${K8S_APP_HELM_DEPLOYMENT} /tmp/chart-spring-boot --set serverdeployment.image=${DOCKER_USERNAME}/${DOCKER_REPO}"'
+                        --docker-email=${DOCKER_USERNAME}\""
+                        sh "ssh ${SSH_OPTIONS} ubuntu@${MASTER_IP} \"helm -n ${K8S_APP_NAMESPACE} install \
+                        ${K8S_APP_HELM_DEPLOYMENT} /tmp/chart-spring-boot \
+                        --set serverdeployment.image=${DOCKER_USERNAME}/${DOCKER_REPO}\""
                     }
-                    sh 'helm -n ${K8S_APP_NAMESPACE} list'
+                    sh "helm -n ${K8S_APP_NAMESPACE} list"
                 }
             }
         }
