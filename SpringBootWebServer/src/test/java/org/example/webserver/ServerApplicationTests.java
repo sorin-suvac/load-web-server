@@ -1,34 +1,88 @@
 package org.example.webserver;
 
-import org.junit.jupiter.api.Assertions;
+import org.example.webserver.configuration.TestMockConfig;
+import org.example.webserver.controller.TaskController;
+import org.example.webserver.model.Task;
+import org.example.webserver.model.TaskStatus;
+import org.example.webserver.service.TaskService;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
 
-import static org.example.webserver.utils.Constants.HOME;
+import java.time.LocalDate;
+import java.util.Collections;
+import java.util.List;
 
-@SpringBootTest
-class ServerApplicationTests {
+import static org.hamcrest.Matchers.hasSize;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-	private static ServerApplication mApp;
+@WebMvcTest(TaskController.class)
+@Import(TestMockConfig.class)
+public class ServerApplicationTests {
 
-	@BeforeAll
-    public static void setup() {
-		mApp = new ServerApplication();
-	}
+    @Autowired
+    private MockMvc mockMvc;
 
-	@Test
-	public void testHomeRequest() {
-		Assertions.assertEquals(mApp.homeRequest(), HOME);
-	}
+    @Autowired
+    private TaskService taskService;
 
-	@Test
-	public void testLoadRequest() {
-		int requests = 5;
-		String result = "";
-		for (int i=0; i<requests; i++) {
-			result = mApp.load1Request();
-		}
-		Assertions.assertEquals(requests, Integer.valueOf(result));
-	}
+    private static Task sampleTask;
+
+    @BeforeAll
+    public static void setUp() {
+        sampleTask = new Task();
+        sampleTask.setId(100L);
+        sampleTask.setTitle("Test Task");
+        sampleTask.setDescription("Description");
+        sampleTask.setStatus(TaskStatus.PENDING);
+        sampleTask.setDueDate(LocalDate.now().plusDays(1));
+    }
+
+    @ParameterizedTest
+    @CsvSource({"100, 200", "101, 404"})
+    public void testGetTask(int id, int statusCode) throws Exception {
+        when(taskService.getTaskById(100)).thenReturn(sampleTask);
+        when(taskService.getTaskById(101)).thenReturn(null);
+
+        mockMvc.perform(get("/api/task/" + id))
+                .andExpect(status().is(statusCode));
+    }
+
+    @Test
+    public void testGetAllTasks() throws Exception {
+        List<Task> taskList = Collections.singletonList(sampleTask);
+        when(taskService.getAllTasks()).thenReturn(taskList);
+
+        mockMvc.perform(get("/api/tasks"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].title").value("Test Task"));
+    }
+
+    @Test
+    public void testAddTask() throws Exception {
+        when(taskService.addTask(any(Task.class))).thenReturn(sampleTask);
+
+        String json = String.format(
+                "{\"title\": \"%s\", \"description\": \"%s\", \"status\": \"%s\", \"dueDate\": \"%s\"}",
+                sampleTask.getTitle(), sampleTask.getDescription(), sampleTask.getStatus(), sampleTask.getDueDate()
+        );
+
+        mockMvc.perform(post("/api/add")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.title").value("Test Task"));
+    }
 }
