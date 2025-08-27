@@ -19,17 +19,20 @@ public class TaskController {
     }
 
     @GetMapping("/task/{id}")
+    @ResponseBody
     public ResponseEntity<Task> getTask(@PathVariable int id) {
         Task task = taskService.getTaskById(id);
         return task == null ? new ResponseEntity<>(HttpStatus.NOT_FOUND) : new ResponseEntity<>(task, HttpStatus.OK);
     }
 
     @GetMapping("/tasks")
+    @ResponseBody
     public ResponseEntity<List<Task>> getAllTasks() {
         return new ResponseEntity<>(taskService.getAllTasks(), HttpStatus.OK);
     }
 
     @PostMapping("/add")
+    @ResponseBody
     public ResponseEntity<Task> addTask(@RequestBody Task task) {
         Task t = taskService.addTask(task);
         return t == null ? new ResponseEntity<>(HttpStatus.BAD_REQUEST) : new ResponseEntity<>(t, HttpStatus.CREATED);
